@@ -2,15 +2,20 @@ mod enums;
 mod components;
 
 use bevy::prelude::*;
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use bevy_inspector_egui::bevy_egui::EguiPlugin;
 use crate::enums::suit::*;
 use crate::components::card::*;
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
+        .add_plugins(EguiPlugin::default())
+        .add_plugins(WorldInspectorPlugin::new())
+        .register_type::<Card>()
         .add_systems(Startup, setup_camera)
         .add_systems(Startup, spawn_cards)
-        .add_systems(Update, move_cards)
+        //.add_systems(Update, move_cards)
         .run();
 }
 
