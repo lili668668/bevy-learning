@@ -15,7 +15,7 @@ fn main() {
         .register_type::<Card>()
         .add_systems(Startup, setup_camera)
         .add_systems(Startup, spawn_cards)
-        //.add_systems(Update, move_cards)
+        .add_systems(Update, move_cards)
         .run();
 }
 
@@ -23,7 +23,10 @@ fn setup_camera(mut commands: Commands) {
     commands.spawn(Camera2d);
 }
 
-fn spawn_cards(mut commands: Commands) {
+fn spawn_cards(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+) {
     let suits = [Suit::Spade, Suit::Heart, Suit::Diamond, Suit::Club];
 
     for (item, suit) in suits.into_iter().enumerate() {
@@ -33,7 +36,7 @@ fn spawn_cards(mut commands: Commands) {
                 rank: 1
             },
             Sprite {
-                color: bevy::color::palettes::css::CRIMSON.into(),
+                image: asset_server.load("images/card.png"),
                 custom_size: Some(Vec2::new(100.0, 150.0)),
                 ..default()
             },
