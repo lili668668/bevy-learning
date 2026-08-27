@@ -16,6 +16,7 @@ fn main() {
         .add_systems(Startup, setup_camera)
         .add_systems(Startup, spawn_cards)
         .add_systems(Update, move_cards)
+        .add_systems(Update, click_cards)
         .run();
 }
 
@@ -51,5 +52,33 @@ fn move_cards (
 ) {
     for mut transform in &mut query {
         transform.translation.y += 50.0 * time.delta_secs();
+    }
+}
+
+fn click_cards (
+    buttons: Res<ButtonInput<MouseButton>>,
+    windows: Query<&Window>,
+    camera_query: Query<(&Camera, &GlobalTransform)>,
+    cards_query: Query<(Entity, &Transform), With<Card>>,
+) {
+    if !buttons.just_pressed(MouseButton::Left) { return; }
+
+    let Ok(window) = windows.single() else { return; };
+    let Some(cursor_position) = window.cursor_position() else { return; };
+
+    let Ok((camera, camera_transform)) = camera_query.single() else { return; };
+
+    let Ok(world_postion) = camera.viewport_to_world_2d(camera_transform, cursor_position) else { return; };
+
+    for (entity, transform) in cards_query.iter() {
+        let card_size = Vec2::new(100.0, 150.0);
+        let position = transform.translation.truncate();
+        let half = card_size / 2.0;
+        
+        if world_postion.x >= position.x - half.x && world_postion.x <= position.x + half.x &&
+           world_postion.y >= position.y - half.y && world_postion.y <= position.y + half.y
+        {
+            println!("觸牌： {:?}", entity);
+        }
     }
 }
