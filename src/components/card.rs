@@ -6,4 +6,5 @@ use crate::enums::suit::*;
 pub struct Card {
     pub suit: Suit,
     pub rank: u8,
+    pub selected: bool,
 }

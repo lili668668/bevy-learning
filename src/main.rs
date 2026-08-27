@@ -15,7 +15,6 @@ fn main() {
         .register_type::<Card>()
         .add_systems(Startup, setup_camera)
         .add_systems(Startup, spawn_cards)
-        .add_systems(Update, move_cards)
         .add_systems(Update, click_cards)
         .run();
 }
@@ -34,7 +33,8 @@ fn spawn_cards(
         commands.spawn((
             Card {
                 suit: suit,
-                rank: 1
+                rank: 1,
+                selected: false
             },
             Sprite {
                 image: asset_server.load("images/card.png"),
@@ -46,20 +46,11 @@ fn spawn_cards(
     }
 }
 
-fn move_cards (
-    time: Res<Time>,
-    mut query: Query<&mut Transform, With<Card>>,
-) {
-    for mut transform in &mut query {
-        transform.translation.y += 50.0 * time.delta_secs();
-    }
-}
-
 fn click_cards (
     buttons: Res<ButtonInput<MouseButton>>,
     windows: Query<&Window>,
     camera_query: Query<(&Camera, &GlobalTransform)>,
-    cards_query: Query<(Entity, &Transform), With<Card>>,
+    mut cards_query: Query<(&mut Card, &mut Sprite, &Transform), With<Card>>,
 ) {
     if !buttons.just_pressed(MouseButton::Left) { return; }
 
@@ -70,7 +61,7 @@ fn click_cards (
 
     let Ok(world_postion) = camera.viewport_to_world_2d(camera_transform, cursor_position) else { return; };
 
-    for (entity, transform) in cards_query.iter() {
+    for (mut card, mut sprite, transform) in cards_query.iter_mut() {
         let card_size = Vec2::new(100.0, 150.0);
         let position = transform.translation.truncate();
         let half = card_size / 2.0;
@@ -78,7 +69,13 @@ fn click_cards (
         if world_postion.x >= position.x - half.x && world_postion.x <= position.x + half.x &&
            world_postion.y >= position.y - half.y && world_postion.y <= position.y + half.y
         {
-            println!("觸牌： {:?}", entity);
+            card.selected = !card.selected;
+
+            if card.selected {
+                sprite.color = bevy::color::palettes::css::GRAY.into();
+            } else {
+                sprite.color = bevy::color::Color::WHITE;
+            }
         }
     }
 }
