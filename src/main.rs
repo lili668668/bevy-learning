@@ -41,16 +41,18 @@ fn spawn_cards(
                 custom_size: Some(Vec2::new(100.0, 150.0)),
                 ..default()
             },
-            Transform::from_xyz(-180.0 + (item as f32 * 120.0), 0.0, 0.0)
+            Transform::from_xyz(-180.0 + (item as f32 * 120.0), 0.0, 0.0),
+            InHand,
         ));
     }
 }
 
 fn click_cards (
+    mut commands: Commands,
     buttons: Res<ButtonInput<MouseButton>>,
     windows: Query<&Window>,
     camera_query: Query<(&Camera, &GlobalTransform)>,
-    mut cards_query: Query<(&mut Card, &mut Sprite, &Transform), With<Card>>,
+    mut cards_query: Query<(Entity, &mut Card, &mut Sprite, &Transform), With<InHand>>,
 ) {
     if !buttons.just_pressed(MouseButton::Left) { return; }
 
@@ -61,7 +63,7 @@ fn click_cards (
 
     let Ok(world_postion) = camera.viewport_to_world_2d(camera_transform, cursor_position) else { return; };
 
-    for (mut card, mut sprite, transform) in cards_query.iter_mut() {
+    for (entity, mut card, mut sprite, transform) in cards_query.iter_mut() {
         let card_size = Vec2::new(100.0, 150.0);
         let position = transform.translation.truncate();
         let half = card_size / 2.0;
@@ -73,8 +75,7 @@ fn click_cards (
 
             if card.selected {
                 sprite.color = bevy::color::palettes::css::GRAY.into();
-            } else {
-                sprite.color = bevy::color::Color::WHITE;
+                commands.entity(entity).remove::<InHand>().insert(OnTable);
             }
         }
     }

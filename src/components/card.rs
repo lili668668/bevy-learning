@@ -8,3 +8,10 @@ pub struct Card {
     pub rank: u8,
     pub selected: bool,
 }
+
+#[derive(Component)]
+pub struct InHand;
+
+#[derive(Component)]
+pub struct OnTable;
+
