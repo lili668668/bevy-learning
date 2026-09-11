@@ -1,11 +1,13 @@
 mod enums;
 mod components;
+mod events;
 
 use bevy::prelude::*;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_inspector_egui::bevy_egui::EguiPlugin;
 use crate::enums::suit::*;
 use crate::components::card::*;
+use crate::events::match_event::*;
 
 fn main() {
     App::new()
@@ -16,6 +18,12 @@ fn main() {
         .add_systems(Startup, setup_camera)
         .add_systems(Startup, spawn_cards)
         .add_systems(Update, click_cards)
+        .add_systems(Update, check_match)
+        .add_observer(|event: On<MatchEvent>, mut commands: Commands| {
+            println!("得牌！加分！");
+            commands.entity(event.hand_card).despawn();
+            commands.entity(event.table_card).despawn();
+        })
         .run();
 }
 
@@ -79,4 +87,18 @@ fn click_cards (
             }
         }
     }
+}
+
+fn check_match(
+    mut commands: Commands,
+    hand_query: Query<(Entity, &Card), With<InHand>>,
+    table_query: Query<(Entity, &Card), With<OnTable>>,
+) {
+    let Some((e1, hand_card)) = hand_query.iter().find(|(_, c)| c.selected) else { return; };
+
+    let Some((e2, _)) = table_query.iter().find(|(_, c)| c.selected && c.rank == hand_card.rank) else { return; };
+    commands.trigger(MatchEvent {
+        hand_card: e1,
+        table_card: e2,
+    });
 }
