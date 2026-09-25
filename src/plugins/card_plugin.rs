@@ -11,7 +11,6 @@ impl Plugin for CardPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<Card>()
             .add_systems(OnEnter(GamePhase::Playing), spawn_cards)
-            .add_systems(Update, click_cards.run_if(in_state(GamePhase::Playing)))
             .add_observer(play_observe);
     }
 }
@@ -37,37 +36,22 @@ fn spawn_cards(
             Transform::from_xyz(-180.0 + (item as f32 * 120.0), 0.0, 0.0),
             InHand,
             DespawnOnExit(GamePhase::GameOver),
-        ));
+            Pickable::default(),
+        )).observe(on_card_click.run_if(in_state(GamePhase::Playing)));
     }
 }
 
-fn click_cards (
+fn on_card_click (
+    click: On<Pointer<Click>>,
     mut commands: Commands,
-    buttons: Res<ButtonInput<MouseButton>>,
-    windows: Query<&Window>,
-    camera_query: Query<(&Camera, &GlobalTransform)>,
-    cards_query: Query<(Entity, &Transform), With<InHand>>,
+    hand_query: Query<(), With<InHand>>,
 ) {
-    if !buttons.just_pressed(MouseButton::Left) { return; }
+    if click.event.button != PointerButton::Primary { return; }
 
-    let Ok(window) = windows.single() else { return; };
-    let Some(cursor_position) = window.cursor_position() else { return; };
+    let card = click.event_target();
+    if !hand_query.contains(card) { return; }
 
-    let Ok((camera, camera_transform)) = camera_query.single() else { return; };
-
-    let Ok(world_postion) = camera.viewport_to_world_2d(camera_transform, cursor_position) else { return; };
-
-    for (entity, transform) in cards_query.iter() {
-        let card_size = Vec2::new(100.0, 150.0);
-        let position = transform.translation.truncate();
-        let half = card_size / 2.0;
-        
-        if world_postion.x >= position.x - half.x && world_postion.x <= position.x + half.x &&
-           world_postion.y >= position.y - half.y && world_postion.y <= position.y + half.y
-        {
-            commands.trigger(PlayCard { card: entity });
-        }
-    }
+    commands.trigger(PlayCard { card: card });
 }
 
 fn play_observe (
