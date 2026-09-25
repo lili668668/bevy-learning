@@ -3,16 +3,25 @@ mod components;
 mod events;
 mod resources;
 
+use bevy::ecs::schedule::LogLevel;
+use bevy::ecs::schedule::ScheduleBuildSettings;
 use bevy::prelude::*;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_inspector_egui::bevy_egui::EguiPlugin;
 use crate::enums::suit::*;
 use crate::components::card::*;
 use crate::events::match_event::*;
+use crate::events::play_card::*;
 use crate::resources::score::*;
 
 fn main() {
     App::new()
+        .edit_schedule(Update, |schedule| {
+            schedule.set_build_settings(ScheduleBuildSettings {
+                ambiguity_detection: LogLevel::Warn,
+                ..default()
+            });
+        })
         .add_plugins(DefaultPlugins)
         .add_plugins(EguiPlugin::default())
         .add_plugins(WorldInspectorPlugin::new())
@@ -22,7 +31,7 @@ fn main() {
         .add_systems(Startup, setup_camera)
         .add_systems(Startup, spawn_cards)
         .add_systems(Update, click_cards)
-        .add_systems(Update, check_match)
+        .add_observer(play_observe)
         .add_observer(score_observe)
         .run();
 }
@@ -60,7 +69,7 @@ fn click_cards (
     buttons: Res<ButtonInput<MouseButton>>,
     windows: Query<&Window>,
     camera_query: Query<(&Camera, &GlobalTransform)>,
-    mut cards_query: Query<(Entity, &mut Card, &mut Sprite, &Transform), With<InHand>>,
+    cards_query: Query<(Entity, &Transform), With<InHand>>,
 ) {
     if !buttons.just_pressed(MouseButton::Left) { return; }
 
@@ -71,7 +80,7 @@ fn click_cards (
 
     let Ok(world_postion) = camera.viewport_to_world_2d(camera_transform, cursor_position) else { return; };
 
-    for (entity, mut card, mut sprite, transform) in cards_query.iter_mut() {
+    for (entity, transform) in cards_query.iter() {
         let card_size = Vec2::new(100.0, 150.0);
         let position = transform.translation.truncate();
         let half = card_size / 2.0;
@@ -79,28 +88,31 @@ fn click_cards (
         if world_postion.x >= position.x - half.x && world_postion.x <= position.x + half.x &&
            world_postion.y >= position.y - half.y && world_postion.y <= position.y + half.y
         {
-            card.selected = !card.selected;
-
-            if card.selected {
-                sprite.color = bevy::color::palettes::css::GRAY.into();
-                commands.entity(entity).remove::<InHand>().insert(OnTable);
-            }
+            commands.trigger(PlayCard { card: entity });
         }
     }
 }
 
-fn check_match(
+fn play_observe (
+    event: On<PlayCard>,
     mut commands: Commands,
-    hand_query: Query<(Entity, &Card), With<InHand>>,
+    cards_query: Query<&Card>,
     table_query: Query<(Entity, &Card), With<OnTable>>,
+    mut sprite_query: Query<&mut Sprite>,
 ) {
-    let Some((e1, hand_card)) = hand_query.iter().find(|(_, c)| c.selected) else { return; };
+    let Ok(played) = cards_query.get(event.card) else { return; };
 
-    let Some((e2, _)) = table_query.iter().find(|(_, c)| c.selected && c.rank == hand_card.rank) else { return; };
-    commands.trigger(MatchEvent {
-        hand_card: e1,
-        table_card: e2,
-    });
+    if let Some((table_card, _)) = table_query.iter().find(|(_, c)| c.rank == played.rank) {
+        commands.trigger(MatchEvent {
+            hand_card: event.card,
+            table_card: table_card,
+        });
+    } else {
+        commands.entity(event.card).remove::<InHand>().insert(OnTable);
+
+        let Ok(mut sprite) = sprite_query.get_mut(event.card) else { return; };
+        sprite.color = bevy::color::palettes::css::GRAY.into();
+    }
 }
 
 fn score_observe (
