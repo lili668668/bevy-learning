@@ -6,16 +6,18 @@ mod states;
 mod plugins;
 
 use bevy::prelude::*;
+use crate::plugins::crash_report_plugin::*;
 use crate::plugins::debug_plugin::*;
 use crate::plugins::game_plugins::*;
 
 fn main() {
     let mut app = App::new();
-    app.add_plugins(DefaultPlugins);
+    app.add_plugins(CrashReportPlugin)
+        .add_plugins(DefaultPlugins);
 
-    if cfg!(debug_assertions) {
-        app.add_plugins(DebugPlugin);
-    }
+    #[cfg(feature = "dev")]
+    app.add_plugins(DebugPlugin);
+
     app.add_plugins(GamePlugins)
         .add_systems(Startup, setup_camera)
         .run();
