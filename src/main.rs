@@ -1,6 +1,7 @@
 mod enums;
 mod components;
 mod events;
+mod resources;
 
 use bevy::prelude::*;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
@@ -8,22 +9,21 @@ use bevy_inspector_egui::bevy_egui::EguiPlugin;
 use crate::enums::suit::*;
 use crate::components::card::*;
 use crate::events::match_event::*;
+use crate::resources::score::*;
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugins(EguiPlugin::default())
         .add_plugins(WorldInspectorPlugin::new())
+        .init_resource::<Score>()
         .register_type::<Card>()
+        .register_type::<Score>()
         .add_systems(Startup, setup_camera)
         .add_systems(Startup, spawn_cards)
         .add_systems(Update, click_cards)
         .add_systems(Update, check_match)
-        .add_observer(|event: On<MatchEvent>, mut commands: Commands| {
-            println!("得牌！加分！");
-            commands.entity(event.hand_card).despawn();
-            commands.entity(event.table_card).despawn();
-        })
+        .add_observer(score_observe)
         .run();
 }
 
@@ -101,4 +101,15 @@ fn check_match(
         hand_card: e1,
         table_card: e2,
     });
+}
+
+fn score_observe (
+    event: On<MatchEvent>,
+    mut commands: Commands,
+    mut score: ResMut<Score>
+) {
+    score.value += 1;
+    println!("得牌！目前分數：{}", score.value);
+    commands.entity(event.hand_card).despawn();
+    commands.entity(event.table_card).despawn();
 }
