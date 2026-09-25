@@ -7,17 +7,16 @@ mod plugins;
 
 use bevy::prelude::*;
 use crate::plugins::debug_plugin::*;
-use crate::plugins::game_phase_plugin::*;
-use crate::plugins::card_plugin::*;
-use crate::plugins::score_plugin::*;
+use crate::plugins::game_plugins::*;
 
 fn main() {
-    App::new()
-        .add_plugins(DefaultPlugins)
-        .add_plugins(DebugPlugin)
-        .add_plugins(GamePhasePlugin)
-        .add_plugins(CardPlugin)
-        .add_plugins(ScorePlugin)
+    let mut app = App::new();
+    app.add_plugins(DefaultPlugins);
+
+    if cfg!(debug_assertions) {
+        app.add_plugins(DebugPlugin);
+    }
+    app.add_plugins(GamePlugins)
         .add_systems(Startup, setup_camera)
         .run();
 }
