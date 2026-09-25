@@ -68,6 +68,7 @@ fn spawn_cards(
             },
             Transform::from_xyz(-180.0 + (item as f32 * 120.0), 0.0, 0.0),
             InHand,
+            DespawnOnExit(GamePhase::GameOver),
         ));
     }
 }
