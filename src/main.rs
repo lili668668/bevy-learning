@@ -2,6 +2,7 @@ mod enums;
 mod components;
 mod events;
 mod resources;
+mod states;
 
 use bevy::ecs::schedule::LogLevel;
 use bevy::ecs::schedule::ScheduleBuildSettings;
@@ -14,6 +15,7 @@ use crate::components::score_text::*;
 use crate::events::match_event::*;
 use crate::events::play_card::*;
 use crate::resources::score::*;
+use crate::states::game_phase::*;
 
 fn main() {
     App::new()
@@ -26,13 +28,16 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugins(EguiPlugin::default())
         .add_plugins(WorldInspectorPlugin::new())
+        .init_state::<GamePhase>()
         .init_resource::<Score>()
         .register_type::<Card>()
         .register_type::<Score>()
         .add_systems(Startup, setup_camera)
-        .add_systems(Startup, spawn_cards)
         .add_systems(Startup, spawn_score_text)
-        .add_systems(Update, click_cards)
+        .add_systems(OnEnter(GamePhase::Playing), (reset_score, spawn_cards))
+        .add_systems(OnEnter(GamePhase::GameOver), spawn_game_over_text)
+        .add_systems(Update, (click_cards, check_game_over).run_if(in_state(GamePhase::Playing)))
+        .add_systems(Update, restart.run_if(in_state(GamePhase::GameOver)).ambiguous_with(check_game_over))
         .add_systems(Update, update_score_text.run_if(resource_changed::<Score>))
         .add_observer(play_observe)
         .add_observer(score_observe)
@@ -152,4 +157,43 @@ fn update_score_text(
 ) {
     let Ok(mut text) = text_query.single_mut() else { return; };
     **text = format!("Score: {}", score.value);
+}
+
+fn check_game_over(
+    hand_query: Query<(), With<InHand>>,
+    mut next_phase: ResMut<NextState<GamePhase>>,
+) {
+    if hand_query.is_empty() {
+        next_phase.set(GamePhase::GameOver);
+    }
+}
+
+fn reset_score(mut score:ResMut<Score>) {
+    score.value = 0;
+}
+
+fn spawn_game_over_text(mut commands: Commands) {
+    commands.spawn((
+        Text::new("Game Over - press R to restart"),
+        TextFont {
+            font_size: FontSize::Px(32.0),
+            ..default()
+        },
+        Node {
+            position_type: PositionType::Absolute,
+            top: px(60),
+            right: px(12),
+            ..default()
+        },
+        DespawnOnExit(GamePhase::GameOver),
+    ));
+}
+
+fn restart (
+    keys: Res<ButtonInput<KeyCode>>,
+    mut next_phase: ResMut<NextState<GamePhase>>,
+) {
+    if keys.just_pressed(KeyCode::KeyR) {
+        next_phase.set(GamePhase::Playing);
+    }
 }
