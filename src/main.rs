@@ -10,6 +10,7 @@ use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_inspector_egui::bevy_egui::EguiPlugin;
 use crate::enums::suit::*;
 use crate::components::card::*;
+use crate::components::score_text::*;
 use crate::events::match_event::*;
 use crate::events::play_card::*;
 use crate::resources::score::*;
@@ -30,7 +31,9 @@ fn main() {
         .register_type::<Score>()
         .add_systems(Startup, setup_camera)
         .add_systems(Startup, spawn_cards)
+        .add_systems(Startup, spawn_score_text)
         .add_systems(Update, click_cards)
+        .add_systems(Update, update_score_text.run_if(resource_changed::<Score>))
         .add_observer(play_observe)
         .add_observer(score_observe)
         .run();
@@ -124,4 +127,29 @@ fn score_observe (
     println!("得牌！目前分數：{}", score.value);
     commands.entity(event.hand_card).despawn();
     commands.entity(event.table_card).despawn();
+}
+
+fn spawn_score_text(mut commands: Commands) {
+    commands.spawn((
+        Text::new("Score: 0"),
+        TextFont {
+            font_size: FontSize::Px(32.0),
+            ..default()
+        },
+        Node {
+            position_type: PositionType::Absolute,
+            top: px(12),
+            right: px(12),
+            ..default()
+        },
+        ScoreText,
+    ));
+}
+
+fn update_score_text(
+    score: Res<Score>,
+    mut text_query: Query<&mut Text, With<ScoreText>>
+) {
+    let Ok(mut text) = text_query.single_mut() else { return; };
+    **text = format!("Score: {}", score.value);
 }
