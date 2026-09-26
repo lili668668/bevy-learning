@@ -1,14 +1,12 @@
-mod enums;
 mod components;
 mod events;
 mod resources;
-mod states;
 mod plugins;
 
 use bevy::prelude::*;
 use crate::plugins::crash_report_plugin::*;
 use crate::plugins::debug_plugin::*;
-use crate::plugins::game_plugins::*;
+use crate::plugins::gui::gui_plugins::*;
 
 fn main() {
     let mut app = App::new();
@@ -18,7 +16,7 @@ fn main() {
     #[cfg(feature = "dev")]
     app.add_plugins(DebugPlugin);
 
-    app.add_plugins(GamePlugins)
+    app.add_plugins(GuiPlugins)
         .add_systems(Startup, setup_camera)
         .run();
 }
