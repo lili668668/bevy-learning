@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [workspace]
-members = ["game_core"]
+members = ["game_core", "cli"]
 
 [dependencies]
 bevy = "0.19.1"
